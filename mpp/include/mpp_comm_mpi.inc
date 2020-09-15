@@ -28,11 +28,16 @@
   !    subroutine mpp_init( flags, in, out, err, log )
   !      integer, optional, intent(in) :: flags, in, out, err, log
   subroutine mpp_init( flags, localcomm )
+#ifdef use_OpenACC
+  use openacc
+#endif
   integer, optional, intent(in) :: flags
   integer, optional, intent(in) :: localcomm
   integer                       :: my_pe, num_pes, len, i, iunit
   logical                       :: opened, existed
   integer                       :: unit_begin, unit_end, unit_nml, io_status
+  ! GDD Added for mapping MPI rank to GPU rank
+  integer :: g_rank,l_devices, local_gpu_id
   character(len=5) :: this_pe
   type(mpp_type), pointer :: dtype
 
@@ -48,6 +53,17 @@
   endif
   call MPI_COMM_RANK( mpp_comm_private, pe,   error )
   call MPI_COMM_SIZE( mpp_comm_private, npes, error )
+
+#ifdef use_OpenACC  
+  !GDD Added to split ranks across GPUs
+  g_rank = pe
+  print *, "g_rank ", pe
+  l_devices =  acc_get_num_devices(acc_device_nvidia)
+  print *, "l_devices ", l_devices
+  local_gpu_id = mod(g_rank,l_devices)
+  print *, "local_gpu_id ", local_gpu_id
+  call acc_set_device_num(local_gpu_id,acc_device_nvidia)
+#endif
 #ifdef use_MPI_SMA
   call SHMEM_BARRIER_ALL()
   call SHPALLOC( p_pSync, SHMEM_BARRIER_SYNC_SIZE, error, -1 )

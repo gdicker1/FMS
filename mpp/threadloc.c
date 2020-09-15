@@ -20,6 +20,9 @@
    this thread/process is located. */
 #include <stdio.h>
 #include <unistd.h>
+#ifdef use_OpenACC
+#include <openacc.h>
+#endif
 #ifdef use_libMPI
 #include <mpi.h>
 #endif
@@ -75,6 +78,15 @@ void main(int argc, char **argv) {
   MPI_Init( &argc, &argv );
   MPI_Comm_rank( MPI_COMM_WORLD, &pe );
   MPI_Comm_size( MPI_COMM_WORLD, &npes );
+#ifdef use_OpenACC  
+  //GDD Added to run 4 ranks
+  int g_rank,l_devices,l_rank;
+  g_rank = pe;
+  l_devices = acc_get_num_devices(acc_device_nvidia);
+  l_rank = g_rank%l_devices;
+  acc_set_device_num(l_rank,acc_device_nvidia);
+  printf("l_devices=%d l_rank=%d g_rank=%d",l_device, l_rank, g_rank);
+#endif
 #ifdef _OPENMP
 #pragma omp parallel
  {
